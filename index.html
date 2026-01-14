@@ -3,26 +3,27 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>A Small Island</title>
+<title>A Small Island — Sweet Edition (Fixed)</title>
 <style>
 :root{
   --bg:#8ecad3;
-  --card:#f7f3ea;
+  --card:#fefcf6;
   --accent:#7a6a4a;
   --muted:#e6ddc5;
-  --shadow: 0 25px 60px rgba(0,0,0,.35);
+  --shadow: 0 28px 60px rgba(0,0,0,.28);
   --radius:14px;
   --font: ui-monospace, SFMono-Regular, Menlo, Monaco, "Roboto Mono", monospace;
   --tile:16px;
   --maxw:1100px;
+  --glass: rgba(255,255,255,0.6);
 }
 
-/* Layout */
+/* Layout & Reset */
 *{box-sizing:border-box}
 html,body{height:100%}
 body{
   margin:0;
-  background:var(--bg);
+  background:linear-gradient(180deg,var(--bg), #6fc4c9 60%);
   font-family:var(--font);
   display:flex;
   flex-direction:column;
@@ -30,11 +31,15 @@ body{
   gap:12px;
   padding:18px 12px 28px;
   -webkit-tap-highlight-color: transparent;
+  color:#222;
 }
 
-/* Canvas */
+/* Game wrapper so confetti can absolutely overlay */
+.wrapper{ position:relative; width:96vw; max-width:var(--maxw); border-radius:20px; overflow:visible; }
+
+/* Canvas: HiDPI friendly */
 canvas#game{
-  width:96vw;
+  width:100%;
   max-width:var(--maxw);
   image-rendering:pixelated;
   border-radius:20px;
@@ -48,7 +53,7 @@ canvas#game{
   width:96vw;
   max-width:var(--maxw);
   min-height:120px;
-  background:var(--card);
+  background:linear-gradient(180deg,var(--card), #fff7e8);
   border:3px solid var(--accent);
   border-radius:var(--radius);
   padding:14px;
@@ -58,7 +63,7 @@ canvas#game{
   box-shadow: 0 6px 20px rgba(0,0,0,0.12);
   position:relative;
 }
-.dialogue-text{white-space:pre-wrap}
+.dialogue-text{white-space:pre-wrap; margin-bottom:8px;}
 .dialogue-actions{margin-top:10px; display:flex; flex-wrap:wrap; gap:8px}
 .btn{
   padding:8px 12px;
@@ -71,20 +76,34 @@ canvas#game{
 }
 .btn:hover{ background:#d6c9a5; }
 .btn.primary{ background:#fde047; border-color:#f1c05a; }
+.btn.ghost{ background:transparent; border:1px dashed rgba(0,0,0,0.08); }
+
+/* Header controls (help, sound, progress) */
+.header-controls{
+  display:flex;
+  gap:8px;
+  align-items:center;
+  justify-content:flex-end;
+  margin-top:-8px;
+  margin-bottom:6px;
+  width:96vw;
+  max-width:var(--maxw);
+}
+.chips{ display:flex; gap:8px; align-items:center; }
 
 /* D-pad (mobile) */
 #dpad{
   display:none;
   position:relative;
-  width:140px;
-  height:140px;
+  width:150px;
+  height:150px;
   margin-bottom:6px;
   touch-action:none;
 }
 .dpad-btn{
   position:absolute;
-  width:44px;
-  height:44px;
+  width:48px;
+  height:48px;
   background:#f2e4b8;
   border:2px solid var(--accent);
   border-radius:10px;
@@ -92,17 +111,18 @@ canvas#game{
   font-family:var(--font);
   display:flex; align-items:center; justify-content:center;
   -webkit-user-select:none; user-select:none;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
 }
 .dpad-btn:active{ background:#d6c9a5; }
-.up{ top:0; left:48px; }
-.down{ bottom:0; left:48px; }
-.left{ left:0; top:48px; }
-.right{ right:0; top:48px; }
+.up{ top:0; left:52px; }
+.down{ bottom:0; left:52px; }
+.left{ left:0; top:52px; }
+.right{ right:0; top:52px; }
 
 /* Controls hint */
-#controls-hint{ font-size:13px; color:#2b2b2b; opacity:0.9; }
+#controls-hint{ font-size:13px; color:#2b2b2b; opacity:0.95; }
 
-/* Toast for fallback notifications */
+/* Toast */
 #toast{
   position:fixed;
   right:18px;
@@ -117,27 +137,74 @@ canvas#game{
   display:none;
 }
 
-/* Confetti canvas sits above main canvas visually */
-#confetti{
+/* Confetti + overlay canvases */
+#confetti, #effects{
   position:absolute;
   pointer-events:none;
   left:0; top:0;
+  border-radius:20px;
+}
+
+/* Help overlay */
+#helpOverlay{
+  position:fixed;
+  left:50%;
+  top:50%;
+  transform:translate(-50%,-50%);
+  max-width:720px;
+  width:92vw;
+  background:linear-gradient(180deg,#ffffff,#fff7ea);
+  border:3px solid var(--accent);
+  padding:16px;
+  border-radius:12px;
+  box-shadow:0 20px 60px rgba(0,0,0,0.32);
+  display:none;
+  z-index:1200;
+}
+#helpOverlay h3{ margin:0 0 8px 0; font-size:18px; }
+#helpOverlay p{ margin:6px 0; font-size:14px; line-height:1.4; }
+
+/* Progress chips */
+.progress-chips{ display:flex; gap:6px; align-items:center; }
+.progress-chip{
+  width:24px; height:24px; border-radius:6px; display:inline-block;
+  background:#f3f4f6; border:1px solid rgba(0,0,0,0.06);
+  display:flex; align-items:center; justify-content:center; font-size:12px;
 }
 
 /* Responsive: show dpad on narrower screens */
 @media (max-width:900px){
   #dpad{ display:block; }
+  .header-controls{ justify-content:space-between; }
 }
 </style>
 </head>
 <body>
-<div style="position:relative; width:96vw; max-width:1100px;">
+<div class="header-controls" aria-hidden="false">
+  <div class="chips">
+    <div id="controls-hint">Arrow keys / WASD to move. Tap choices to interact.</div>
+  </div>
+  <div class="chips">
+    <div class="progress-chips" aria-hidden="false" title="Treasures found">
+      <div class="progress-chip" id="p0">◻</div>
+      <div class="progress-chip" id="p1">◻</div>
+      <div class="progress-chip" id="p2">◻</div>
+      <div class="progress-chip" id="p3">◻</div>
+    </div>
+    <button class="btn" id="helpBtn" aria-label="How to play">How to play</button>
+    <button class="btn" id="soundBtn" aria-pressed="false" aria-label="Toggle sound">🔔</button>
+    <button class="btn ghost" id="resetBtn" title="Reset progress">Reset</button>
+  </div>
+</div>
+
+<div class="wrapper" style="position:relative; width:96vw; max-width:1100px;">
   <canvas id="game" width="1100" height="700" aria-label="Game canvas"></canvas>
-  <canvas id="confetti" width="1100" height="700" style="width:96vw; max-width:1100px; height:auto;"></canvas>
+  <canvas id="effects" width="1100" height="700" style="width:100%; height:auto;"></canvas>
+  <canvas id="confetti" width="1100" height="700" style="width:100%; height:auto;"></canvas>
 </div>
 
 <!-- dialogue: no persistent Continue button — only actions created when needed -->
-<div id="dialogue" aria-live="polite">
+<div id="dialogue" aria-live="polite" aria-atomic="true">
   <div class="dialogue-text">Some people talk.\nSome people explore.\nYou might need to do both.</div>
   <div class="dialogue-actions"></div>
 </div>
@@ -150,36 +217,102 @@ canvas#game{
   <button class="dpad-btn right" data-dir="right" aria-label="Right">▶</button>
 </div>
 
-<div id="controls-hint">Arrow keys / D-pad to move. Tap choices to interact.</div>
 <div id="toast" role="status" aria-live="polite"></div>
 
+<!-- Help Overlay -->
+<div id="helpOverlay" role="dialog" aria-modal="true" aria-hidden="true">
+  <h3>How to play</h3>
+  <p>Move with <strong>Arrow keys</strong> or <strong>WASD</strong>. On mobile, use the D-pad or tap the screen edge where the d-pad appears.</p>
+  <p>Walk close to people to talk — they sometimes leave helpful clues. Treasures are small yellow lights resting on the ground; collect them by talking and choosing to "take a moment".</p>
+  <p>One treasure is behind a small seam — listen to people and find where the bridge might appear.</p>
+  <p>Hints appear as toasts and in dialogue when you get close to things. Progress is saved automatically.</p>
+  <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:8px;">
+    <button class="btn primary" id="closeHelp">Got it</button>
+  </div>
+</div>
+
 <script>
-/* ================= SETUP ================= */
+/* ================= UTILS & SETUP ================= */
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 ctx.imageSmoothingEnabled = false;
 
+const effectsCanvas = document.getElementById("effects");
+const effectsCtx = effectsCanvas.getContext("2d");
+
 const confettiCanvas = document.getElementById("confetti");
-confettiCanvas.width = canvas.width;
-confettiCanvas.height = canvas.height;
 const confettiCtx = confettiCanvas.getContext("2d");
 
 const dialogueEl = document.getElementById("dialogue");
 const dialogueTextEl = dialogueEl.querySelector(".dialogue-text");
 const dialogueActionsEl = dialogueEl.querySelector(".dialogue-actions");
 const toastEl = document.getElementById("toast");
+const helpBtn = document.getElementById("helpBtn");
+const helpOverlay = document.getElementById("helpOverlay");
+const closeHelp = document.getElementById("closeHelp");
+const soundBtn = document.getElementById("soundBtn");
+const resetBtn = document.getElementById("resetBtn");
+const progressChips = [document.getElementById("p0"), document.getElementById("p1"), document.getElementById("p2"), document.getElementById("p3")];
 
+let DPR = Math.max(1, window.devicePixelRatio || 1);
+function resizeCanvases(){
+  DPR = Math.max(1, window.devicePixelRatio || 1);
+  const w = 1100, h = 700;
+  canvas.width = w * DPR;
+  canvas.height = h * DPR;
+  canvas.style.width = '100%';
+  canvas.style.height = 'auto';
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+  ctx.imageSmoothingEnabled = false;
+
+  effectsCanvas.width = w * DPR;
+  effectsCanvas.height = h * DPR;
+  effectsCanvas.style.width = '100%';
+  effectsCanvas.style.height = 'auto';
+  effectsCtx.setTransform(DPR,0,0,DPR,0,0);
+  effectsCtx.imageSmoothingEnabled = false;
+
+  confettiCanvas.width = w * DPR;
+  confettiCanvas.height = h * DPR;
+  confettiCanvas.style.width = '100%';
+  confettiCanvas.style.height = 'auto';
+  confettiCtx.setTransform(DPR,0,0,DPR,0,0);
+  confettiCtx.imageSmoothingEnabled = false;
+}
+window.addEventListener('resize', resizeCanvases);
+resizeCanvases();
+
+/* keyboard state for smooth movement */
+const keys = {};
+window.addEventListener('keydown', e => keys[e.key] = true);
+window.addEventListener('keyup', e => keys[e.key] = false);
+
+/* simple storage for progress */
+const STORAGE_KEY = 'small-island-save';
+function saveState(stateObj){
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(stateObj)); }
+  catch(e){ console.warn('save failed', e); }
+}
+function loadState(){
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY)); }
+  catch(e){ return null; }
+}
+
+/* ================= GAME STATE ================= */
 const TILE = 16;
 let tick = 0;
 let locked = false; // when true, player cannot move or interact
 
-/* ================= GAME STATE ================= */
-const player = { x:550, y:360, speed:8, w:24, h:44 };
-const progress = { treasure:0 };
-const world = {
-  bridgeOpen: false, // world gate that connects paths
-  celebrate: false
+const player = { x:550, y:360, speed:2.25, w:24, h:44 };
+const state = {
+  progress: { treasure:0 }, // number collected
+  world: { bridgeOpen:false, celebrate:false }
 };
+
+/* activeIndex controls which treasure is visible & collectable.
+   We'll set it after treasures is defined.
+*/
+let activeIndex = 0;
 
 /* ================= COLORS / THEME ================= */
 const C = {
@@ -192,17 +325,30 @@ const C = {
   roof:["#b45309","#7c3aed","#2563eb","#be123c"],
   wall:"#fff4d8",
   skin:"#f1c7a5",
-  rock:"#6b7280"   // added rock color for island detail (design-only)
+  rock:"#6b7280"
 };
 
-/* ================= ISLAND (updated design only) ================= */
-/* - smoother coastline using angle-based jitter
-   - small rock clusters for visual interest
-   - leaves all other game logic untouched */
+/* ================= FIRELIES (ambient particles) ================= */
+let fireflies = [];
+function initFireflies(n = 30){
+  fireflies = [];
+  for(let i=0;i<n;i++){
+    fireflies.push({
+      x: Math.random()*canvas.width/DPR,
+      y: Math.random()*canvas.height/DPR,
+      r: Math.random()*2+1,
+      v: (Math.random()*2-1)*0.25,
+      vy: Math.random()*0.25+0.05,
+      phase: Math.random()*Math.PI*2,
+      color: (Math.random()>0.6) ? "#fde047" : "#a7f3d0"
+    });
+  }
+}
+initFireflies();
+
+/* ================= ISLAND & PATHS (prettier coastline + decoration) ================= */
 const island=[];
 const cx=550, cy=360, r=430;
-
-// generate a few rock clusters
 const rockSeeds = [];
 for(let i=0;i<6;i++){
   rockSeeds.push({
@@ -211,59 +357,41 @@ for(let i=0;i<6;i++){
     r: 18 + Math.random()*36
   });
 }
-
-for(let y=0;y<canvas.height;y+=TILE){
-  for(let x=0;x<canvas.width;x+=TILE){
+for(let y=0;y<700;y+=TILE){
+  for(let x=0;x<1100;x+=TILE){
     const dx = x + TILE/2 - cx;
     const dy = y + TILE/2 - cy;
     const d = Math.hypot(dx,dy);
     const angle = Math.atan2(dy,dx);
-
-    // coastline jitter: make an organic edge using a combination of sines
     const jitter = 36 * Math.sin(angle*3.1 + Math.sin(x*0.018)*1.2 + Math.cos(y*0.02)*0.9)
                  + 18 * Math.cos(angle*1.7 + Math.sin(y*0.013));
     const radiusHere = r + jitter;
-
     if(d < radiusHere){
       const n = Math.sin(x*.04)+Math.cos(y*.05);
-
-      // detect nearby rock seeds to mark rocky tiles
       let isRock = false;
       for(const s of rockSeeds){
         if(Math.hypot(x - s.x, y - s.y) < s.r) { isRock = true; break; }
       }
-
-      // sand band near coast
       let t;
       if(d > radiusHere - 36) t = "sand";
       else if(isRock) t = "rock";
       else t = n>0.55 ? "grass2" : n<-0.55 ? "grass3" : "grass1";
-
       island.push({ x, y, t });
     }
   }
 }
 
-/* ================= CONNECTED PATHS ONLY (design change) ================= */
-/* Paths adjusted so every branch meets the central corridor and branches are joined visually.
-   This section is the only other change: it makes the road network connected. */
+/* connected paths (visual, bridge gated) */
 const paths = [
-  // main vertical spine through the island (connects north and south)
   {x:520,y:80,w:60,h:520},
-  // central horizontal corridor intersects the vertical spine (central hub)
   {x:200,y:348,w:700,h:44},
-  // northwards branches connecting to houses/areas
   {x:200,y:132,w:260,h:26},
   {x:640,y:132,w:260,h:26},
-  // southwards branches connecting lower areas
   {x:200,y:548,w:260,h:26},
   {x:640,y:548,w:260,h:26},
-  // bridge segment (visual) that completes the right-hand approach to the final treasure;
-  // remains gated by world.bridgeOpen (game logic unchanged)
   {x:740,y:220,w:36,h:260, bridge:true}
 ];
 
-/* ================= HOUSES ================= */
 const houses=[
   {x:200,y:110,roof:0},
   {x:760,y:110,roof:1},
@@ -271,47 +399,71 @@ const houses=[
   {x:780,y:500,roof:3}
 ];
 
-/* ================= DIALOGUE SYSTEM ================= */
+/* small palm trees to decorate the map (improve map design) */
+const palms = [
+  {x:300,y:220,scale:1.0},
+  {x:440,y:280,scale:0.9},
+  {x:700,y:420,scale:1.2},
+  {x:860,y:240,scale:0.85},
+  {x:460,y:520,scale:0.95}
+];
+
+function drawPalm(x,y,scale=1){
+  // trunk
+  const tw = 4 * scale;
+  const th = 20 * scale;
+  ctx.fillStyle = "#6b3e1e";
+  roundRect(ctx, x - tw/2, y - th, tw, th, 3, true, false);
+  ctx.fill();
+  // leaves (simple arcs)
+  ctx.fillStyle = "#2f9b3a";
+  for(let i=0;i<5;i++){
+    ctx.beginPath();
+    const ang = -Math.PI/2 + (i-2)*0.4;
+    const lx = x + Math.cos(ang)*12*scale;
+    const ly = y - th + Math.sin(ang)*8*scale;
+    ctx.ellipse(lx, ly, 20*scale - Math.abs(i-2)*4, 8*scale, ang, 0, Math.PI*2);
+    ctx.fill();
+  }
+}
+
+/* ================= DIALOGUE SYSTEM (made sweeter) ================= */
 function say(text, choices){
-  // choices: [{label, response, onChoose}, ...] or arrays ["label","response"]
   return { text, choices: (choices || []).map(c => Array.isArray(c) ? {label:c[0], response:c[1]} : c) };
 }
 
 function clearDialogue(){
   dialogueTextEl.textContent = "";
   dialogueActionsEl.innerHTML = "";
+  dialogueEl.setAttribute('aria-hidden','true');
+  locked = false;
 }
 
 function showDialogue(dialogObj){
   locked = true;
+  dialogueEl.setAttribute('aria-hidden','false');
   dialogueTextEl.textContent = dialogObj.text || "";
   dialogueActionsEl.innerHTML = "";
 
   if(dialogObj.choices && dialogObj.choices.length){
-    // show choice buttons
     dialogObj.choices.forEach((c, i) => {
       const btn = document.createElement("div");
       btn.className = "btn";
       btn.textContent = c.label || `Choice ${i+1}`;
+      btn.tabIndex = 0;
       btn.onclick = () => {
-        // show the response text (if any)
         if(c.response) dialogueTextEl.textContent = c.response;
-        // immediately run onChoose if present
         if(typeof c.onChoose === "function") c.onChoose();
-        // show a single Continue button that closes dialogue
         dialogueActionsEl.innerHTML = "";
         const cont = document.createElement("div");
         cont.className = "btn primary";
         cont.textContent = "Continue";
-        cont.onclick = () => {
-          closeDialogue();
-        };
+        cont.onclick = () => { closeDialogue(); };
         dialogueActionsEl.appendChild(cont);
       };
       dialogueActionsEl.appendChild(btn);
     });
   } else {
-    // no choices: show Continue to close
     const cont = document.createElement("div");
     cont.className = "btn primary";
     cont.textContent = "Continue";
@@ -322,11 +474,14 @@ function showDialogue(dialogObj){
 
 function closeDialogue(){
   locked = false;
+  dialogueEl.setAttribute('aria-hidden','true');
   clearDialogue();
+  // save after interactions
+  saveState({ progress: state.progress, world: state.world });
 }
 
-/* ================= NOTIFICATIONS / TOAST ================= */
-function showToast(text, duration = 4000){
+/* ================= TOASTS ================= */
+function showToast(text, duration = 3800){
   toastEl.textContent = text;
   toastEl.style.display = "block";
   toastEl.style.opacity = "1";
@@ -338,199 +493,292 @@ function showToast(text, duration = 4000){
   }, duration);
 }
 
-async function triggerNotification(title, options = {}){
+/* ================= AUDIO (tiny chime) ================= */
+let audioEnabled = true;
+soundBtn.addEventListener('click', () => {
+  audioEnabled = !audioEnabled;
+  soundBtn.setAttribute('aria-pressed', String(audioEnabled));
+  soundBtn.textContent = audioEnabled ? '🔔' : '🔕';
+});
+function playChime(freq = 880, length=0.18, type='sine'){
+  if(!audioEnabled) return;
   try{
-    if("Notification" in window){
-      if(Notification.permission === "granted"){
-        new Notification(title, options);
-      } else if(Notification.permission === "denied"){
-        showToast(options.body || title);
-      } else {
-        const p = await Notification.requestPermission();
-        if(p === "granted"){
-          new Notification(title, options);
-        } else {
-          showToast(options.body || title);
-        }
-      }
-    } else {
-      showToast(options.body || title);
-    }
-  } catch(err){
-    showToast(options.body || title);
-  }
+    const ctxA = new (window.AudioContext || window.webkitAudioContext)();
+    const o = ctxA.createOscillator();
+    const g = ctxA.createGain();
+    o.type = type;
+    o.frequency.value = freq;
+    o.connect(g);
+    g.connect(ctxA.destination);
+    g.gain.value = 0.0001;
+    const now = ctxA.currentTime;
+    g.gain.exponentialRampToValueAtTime(0.12, now+0.02);
+    o.start(now);
+    g.gain.exponentialRampToValueAtTime(0.0001, now + length);
+    o.stop(now + length + 0.05);
+    setTimeout(()=>{ try{ ctxA.close(); }catch(e){} }, 600);
+  }catch(e){}
 }
 
-/* ================= TREASURES ================= */
-/* final treasure blocked until bridgeOpen */
+/* ================= TREASURES (gentle + ONE-BY-ONE behavior) ================= */
 const treasures=[
-  {x:340,y:160,msg:"You notice small details."},
-  {x:760,y:160,msg:"You move through places gently."},
-  {x:340,y:560,msg:"Things feel calmer after you leave."},
+  {x:340,y:160,msg:"You notice small details.\nYou have a soft eye for the quiet things."},
+  {x:760,y:160,msg:"You move through places gently.\nThat kindness changes everything."},
+  {x:340,y:560,msg:"Things feel calmer after you leave.\nYou leave warmth in your wake."},
   {x:760,y:560,msg:"You found the last tiny light.\nThis island kept a secret for you.", requiresBridge:true}
 ];
 
+/* ======= SAFE RESTORE (moved after treasures exist) ======= */
+(function restoreProgress(){
+  const saved = loadState();
+  const rawIndex = Number(saved?.progress?.treasure);
+  const savedIndex = Number.isFinite(rawIndex) ? rawIndex : 0;
+
+  // clamp to treasures.length
+  state.progress.treasure = Math.max(0, Math.min(savedIndex, treasures.length));
+  activeIndex = state.progress.treasure;
+  state.world.bridgeOpen = !!saved?.world?.bridgeOpen;
+  state.world.celebrate = !!saved?.world?.celebrate;
+  updateProgressUI();
+
+  // Defensive: ensure no stale lock on load
+  locked = false;
+  clearDialogue();
+})();
+
+/* drawTreasure: collected are muted, exactly one active at activeIndex */
 function drawTreasure(){
-  const t = treasures[progress.treasure];
-  if(!t) return;
-  if(t.requiresBridge && !world.bridgeOpen){
-    // locked chest glyph
-    ctx.fillStyle = "#7a5034";
-    ctx.fillRect(t.x-18,t.y-18,36,22);
-    ctx.fillStyle = "#d6b36b";
-    ctx.fillRect(t.x-16,t.y-10,32,6);
-    ctx.fillStyle = "#000";
-    ctx.fillRect(t.x-2,t.y-6,4,6);
+  // collected
+  for (let i = 0; i < Math.min(state.progress.treasure, treasures.length); i++) {
+    const tcol = treasures[i];
+    if(!tcol) continue;
+    ctx.save();
+    ctx.globalAlpha = 0.55;
+    ctx.fillStyle = "#fde047";
+    roundRect(ctx, tcol.x - 10, tcol.y - 10, 20, 20, 5, true, false);
+    ctx.restore();
+  }
+
+  // all collected = celebratory
+  if (state.progress.treasure >= treasures.length) {
+    for (const t of treasures) {
+      ctx.save();
+      ctx.shadowColor = "rgba(253,224,71,0.95)";
+      ctx.shadowBlur = 14;
+      ctx.fillStyle = "#fde047";
+      roundRect(ctx, t.x - 14, t.y - 14, 28, 28, 6, true, false);
+      ctx.restore();
+    }
     return;
   }
-  ctx.fillStyle = tick%30<15 ? "#fde047" : "#facc15";
-  ctx.fillRect(t.x-18,t.y-18,36,36);
+
+  // exactly one active treasure (activeIndex)
+  const idx = activeIndex;
+  if(idx < 0 || idx >= treasures.length) return;
+  const t = treasures[idx];
+
+  if (t.requiresBridge && !state.world.bridgeOpen){
+    ctx.save();
+    ctx.globalAlpha = 0.95;
+    ctx.fillStyle = "#7a5034";
+    roundRect(ctx, t.x - 18, t.y - 18, 36, 22, 4, true, false);
+    ctx.fillStyle = "#d6b36b";
+    ctx.fillRect(t.x - 16, t.y - 10, 32, 6);
+    ctx.fillStyle = "#000";
+    ctx.fillRect(t.x - 2, t.y - 6, 4, 6);
+    ctx.restore();
+    return;
+  }
+
+  const glow = 6 + 3 * Math.sin(tick * 0.12);
+  ctx.save();
+  ctx.shadowColor = "rgba(253,224,71,0.95)";
+  ctx.shadowBlur = 12 + glow;
+  ctx.fillStyle = (tick % 30 < 15) ? "#fde047" : "#facc15";
+  roundRect(ctx, t.x - 18, t.y - 18, 36, 36, 6, true, false);
+  ctx.restore();
+
+  if (tick % 50 < 6){
+    effectsCtx.save();
+    effectsCtx.fillStyle = "rgba(255,255,255,0.9)";
+    effectsCtx.fillRect(t.x - 2, t.y - 24, 4, 6);
+    effectsCtx.restore();
+  }
 }
 
-/* centralized treasure advancement */
-function advanceTreasure(){
-  progress.treasure++;
-  if(progress.treasure >= treasures.length){
-    world.celebrate = true;
-    createConfetti(140);
-    // sweeter final message
+/* collect the active treasure only; then set next active immediately */
+function collectCurrent(){
+  state.progress.treasure = Math.min(state.progress.treasure + 1, treasures.length);
+  activeIndex = state.progress.treasure;
+  saveState({ progress: state.progress, world: state.world });
+  updateProgressUI();
+  playChime(880,0.18,'sine');
+  showToast("Thank you — you were gentle and present.", 2800);
+
+  if(activeIndex < treasures.length){
+    const next = treasures[activeIndex];
+    if(next){
+      triggerSmallSpark(next.x, next.y - 8);
+      playChime(980,0.12,'triangle');
+      showToast("A faint glow appears somewhere on the island.", 1600);
+    }
+  } else {
+    state.world.celebrate = true;
+    createConfetti(220);
     showDialogue(say(
-      "You gathered every small light.\nThe island hums softly; it seems grateful.\nHappy Birthday — may this little island keep you warm.",
+      "You gathered every small light.\nThe island hums softly; it remembers your care.\nHappy Birthday — may this small island hold a quiet warmth for you always.\nYou are seen, you are loved.",
       [
         { label: "Breathe", response: "You sit for a while, letting the place hold you." },
-        { label: "Return", response: "When you're ready, the island will be here again." }
+        { label: "Return", response: "When you're ready, the island will be here again — with a light for you." }
       ]
     ));
+    showToast("You found all the treasures. Happy Birthday — you are cherished. ❤️", 9000);
     triggerNotification("A Small Island — Completed", {
       body: "You found all the treasures. Happy Birthday ❤️"
     });
   }
 }
 
-/* checkTreasure gate by bridge */
+/* protected pickup */
 function checkTreasure(){
-  const t = treasures[progress.treasure];
-  if(!t || locked) return;
+  if(locked) return;
+  if(activeIndex >= treasures.length) return;
+  const t = treasures[activeIndex];
+  if(!t) return;
   if(Math.hypot(player.x - t.x, player.y - t.y) < 40){
-    if(t.requiresBridge && !world.bridgeOpen){
+    if(t.requiresBridge && !state.world.bridgeOpen){
       showDialogue(say("A faint seam blocks the way.\nMaybe someone knows how to mend it.", [
         { label: "Ask around", response: "You look to the people nearby." },
         { label: "Explore elsewhere", response: "There is calm in moving along." }
       ]));
       return;
     }
+    playChime(880,0.12,'triangle');
     showDialogue(say(t.msg, [
-      { label: "Take a moment", response: "You take a small, quiet moment.", onChoose: advanceTreasure },
-      { label: "Carry on", response: "You tuck the moment away and continue.", onChoose: advanceTreasure }
+      { label: "Take a moment", response: "You take a small, quiet moment.", onChoose: collectCurrent },
+      { label: "Carry on", response: "You tuck the moment away and continue.", onChoose: collectCurrent }
     ]));
   }
 }
 
-/* ================= NPCS ================= */
+/* ================= NPCS (sweeter compliments in dialogues) ================= */
 function npc(x,y,path,hair,clothes,dialogueFn){
   return {x,y,path,step:0,hair,clothes,dialogueFn,affinity:0,talks:0,active:true};
 }
 
 function revealBridge(){
-  if(world.bridgeOpen) return;
-  world.bridgeOpen = true;
+  if(state.world.bridgeOpen) return;
+  state.world.bridgeOpen = true;
+  saveState({ progress: state.progress, world: state.world });
   showToast("A small bridge creaks into place.");
+  playChime(620,0.18,'sine');
 }
 
-/* meaningful choices; after two total choices NPC becomes inactive */
+/* NPCs with sweeter lines and occasional compliments */
 const npcs=[
  npc(520,360,[[520,360],[560,360],[560,400],[520,400]],
   "#4a2c1a","#a47148",
-  ()=>say("You move gently.\nPlaces feel that.", [
-    { label: "I try", response: "It shows.", onChoose: function(){ this.affinity++; } },
-    { label: "That helps", response: "Keep it soft.", onChoose: function(){ this.affinity++; } }
+  ()=>say("You move gently.\nYour presence calms the place.", [
+    { label: "I try", response: "It shows — you make things softer.", onChoose: function(){ this.affinity++; } },
+    { label: "That helps", response: "Keep being you.", onChoose: function(){ this.affinity++; } }
   ])
  ),
  npc(580,360,[[580,360],[620,360]],
   "#1f2937","#65a30d",
-  ()=>progress.treasure===0
-   ? say("Not everything appears at once.", [
-       { label: "I’ll look", response: "Good instinct.", onChoose: function(){ this.affinity++; showToast("He nods toward the north."); } },
-       { label: "Maybe later", response: "I understand." }
+  ()=>state.progress.treasure===0
+   ? say("Not everything appears at once.\nYour curiosity is lovely.", [
+       { label: "I’ll look", response: "Good instinct — you notice the small things.", onChoose: function(){ this.affinity++; showToast("He smiles and nods toward the north."); } },
+       { label: "Maybe later", response: "I understand. Take your time." }
      ])
-   : say("You noticed something.", [
-       { label: "It felt quiet", response: "That’s how it works.", onChoose: function(){ this.affinity++; } },
-       { label: "I noticed", response: "You did." }
+   : say("You noticed something.\nI like how you pay attention.", [
+       { label: "It felt quiet", response: "That's part of the magic.", onChoose: function(){ this.affinity++; } },
+       { label: "I noticed", response: "You did — nicely." }
      ])
  ),
  npc(260,160,[[260,160],[300,160]],
   "#78350f","#38bdf8",
-  ()=>say("You’re curious without rushing.", [
-    { label: "Thanks", response: "It suits you.", onChoose: function(){ this.affinity++; } },
-    { label: "How so?", response: "Softly.", onChoose: function(){ this.affinity++; showToast("She hums, 'Try listening.'"); } }
+  ()=>say("You’re curious without rushing.\nThat suits you beautifully.", [
+    { label: "Thanks", response: "It suits you too.", onChoose: function(){ this.affinity++; } },
+    { label: "How so?", response: "Soft curiosity opens tiny doors.", onChoose: function(){ this.affinity++; showToast("She hums, 'Try listening.'"); } }
   ])
  ),
  npc(840,160,[[840,160],[800,160]],
   "#86198f","#f9a8d4",
-  ()=>say("You don’t force moments.", [
-    { label: "I wait", response: "That’s clear.", onChoose: function(){ this.affinity++; } },
+  ()=>say("You don’t force moments.\nYou have a gentle heart.", [
+    { label: "I wait", response: "That patience is kind.", onChoose: function(){ this.affinity++; } },
     { label: "I'll watch", response: "If you truly watch, something moves.", onChoose: function(){ this.affinity++; revealBridge(); } }
   ])
  ),
  npc(840,560,[[840,560],[800,560]],
   "#312e81","#a5b4fc",
-  ()=>progress.treasure>=3
-   ? say("You stayed until the end.", [
-       { label: "I wanted to", response: "I know.", onChoose: function(){ this.affinity++; } },
-       { label: "We did it", response: "Yes.", onChoose: function(){ this.affinity++; } }
+  ()=>state.progress.treasure>=3
+   ? say("You stayed until the end.\nThat was brave and beautiful.", [
+       { label: "I wanted to", response: "I know — you gave the island your care.", onChoose: function(){ this.affinity++; } },
+       { label: "We did it", response: "Yes — together.", onChoose: function(){ this.affinity++; } }
      ])
-   : say("Something else is waiting.", [
-       { label: "I’ll keep going", response: "No rush.", onChoose: function(){ this.affinity++; } },
-       { label: "Not yet", response: "Soon." }
-     ])
+   : say("Something else is waiting.\nYou're doing well.", [
+       { label: "I’ll keep going", response: "No rush. Move gently.", onChoose: function(){ this.affinity++; } },
+       { label: "Not yet", response: "Soon. It's okay." }
+     ] )
  )
 ];
 
 /* ================= NPC MOVEMENT ================= */
 function updateNPCs(){
-  if(tick % 60 !== 0) return;
+  if(tick % 40 !== 0) return;
   npcs.forEach(n=>{
     const [tx,ty] = n.path[n.step];
     if(Math.hypot(tx - n.x, ty - n.y) < 4){
       n.step = (n.step + 1) % n.path.length;
     } else {
-      n.x += Math.sign(tx - n.x)*4;
-      n.y += Math.sign(ty - n.y)*4;
+      n.x += Math.sign(tx - n.x)*2;
+      n.y += Math.sign(ty - n.y)*2;
     }
   });
 }
 
 /* ================= DRAW CHARACTERS ================= */
 function drawNPC(n){
-  // fade out if inactive
   if(!n.active) ctx.globalAlpha = 0.45;
+  // hair
+  roundRect(ctx, n.x, n.y, 24, 12, 3, true, false);
   ctx.fillStyle = n.hair;
-  ctx.fillRect(n.x, n.y, 24, 12); // hair
+  ctx.fill();
+  // face
   ctx.fillStyle = C.skin;
-  ctx.fillRect(n.x+4, n.y+12, 16, 16); // face
+  roundRect(ctx, n.x+4, n.y+12, 16, 16, 3, true, false);
+  ctx.fill();
+  // eyes
   ctx.fillStyle = "#000";
   ctx.fillRect(n.x+9, n.y+17, 2, 2);
   ctx.fillRect(n.x+15, n.y+17, 2, 2);
+  // clothes
   ctx.fillStyle = n.clothes;
-  ctx.fillRect(n.x+4, n.y+30, 16, 14); // clothes
+  roundRect(ctx, n.x+4, n.y+30, 16, 14, 3, true, false);
+  ctx.fill();
   // small affinity marker when affinity > 0 and active
   if(n.affinity > 0 && n.active){
     ctx.fillStyle = "#fde047";
-    ctx.fillRect(n.x+22, n.y-6, 8, 8);
+    roundRect(ctx, n.x+22, n.y-6, 8, 8, 2, true, false);
+    ctx.fill();
   }
   if(!n.active) ctx.globalAlpha = 1;
 }
 
 function drawPlayer(){
+  ctx.save();
+  // little bob with tick
+  const bob = Math.sin(tick*0.08)*2;
   ctx.fillStyle="#be185d";
-  ctx.fillRect(player.x,player.y,24,12);
+  roundRect(ctx, player.x, player.y + bob, 24, 12, 3, true, false);
   ctx.fillStyle=C.skin;
-  ctx.fillRect(player.x+4,player.y+12,16,16);
+  roundRect(ctx, player.x+4, player.y+12 + bob, 16, 16, 3, true, false);
   ctx.fillStyle="#000";
-  ctx.fillRect(player.x+9,player.y+17,2,2);
-  ctx.fillRect(player.x+15,player.y+17,2,2);
+  ctx.fillRect(player.x+9, player.y+17 + bob, 2, 2);
+  ctx.fillRect(player.x+15, player.y+17 + bob, 2, 2);
   ctx.fillStyle="#f2a2b5";
-  ctx.fillRect(player.x+4,player.y+30,16,14);
+  roundRect(ctx, player.x+4, player.y+30 + bob, 16, 14, 3, true, false);
+  ctx.restore();
 }
 
 /* ================= INTERACTION ================= */
@@ -540,7 +788,6 @@ function checkNPC(){
     if(!n.active) continue;
     if(Math.hypot(player.x-n.x, player.y-n.y) < 40){
       let d = n.dialogueFn();
-      // bind onChoose handlers to the npc and wrap them to increment talk count + deactivate after two
       if(d.choices){
         d.choices = d.choices.map(c => {
           const copy = Object.assign({}, c);
@@ -565,29 +812,60 @@ function checkNPC(){
 /* ================= INPUT & MOVEMENT ================= */
 function move(dx,dy){
   if(locked) return;
-  player.x = Math.max(20, Math.min(canvas.width-20, player.x + dx));
-  player.y = Math.max(20, Math.min(canvas.height-20, player.y + dy));
+  player.x = Math.max(20, Math.min(1100-20, player.x + dx));
+  player.y = Math.max(20, Math.min(700-20, player.y + dy));
   checkTreasure();
   checkNPC();
 }
 
-window.addEventListener("keydown", e => {
-  if(e.key === "ArrowUp") move(0, -player.speed);
-  if(e.key === "ArrowDown") move(0, player.speed);
-  if(e.key === "ArrowLeft") move(-player.speed, 0);
-  if(e.key === "ArrowRight") move(player.speed, 0);
-});
+function inputTick(){
+  if(locked) return;
+  let dx = 0, dy = 0;
+  if(keys['ArrowUp']||keys['w']||keys['W']) dy -= player.speed;
+  if(keys['ArrowDown']||keys['s']||keys['S']) dy += player.speed;
+  if(keys['ArrowLeft']||keys['a']||keys['A']) dx -= player.speed;
+  if(keys['ArrowRight']||keys['d']||keys['D']) dx += player.speed;
+  if(dx !== 0 && dy !== 0){ dx *= Math.SQRT1_2; dy *= Math.SQRT1_2; }
+  if(dx || dy) move(dx, dy);
+}
+setInterval(inputTick, 16);
 
-/* MOBILE D-PAD */
+/* MOBILE D-PAD continuous movement behavior */
 document.querySelectorAll(".dpad-btn").forEach(btn=>{
+  let interval;
   btn.addEventListener("touchstart", e=>{
     e.preventDefault();
     const d = btn.dataset.dir;
-    if(d === "up") move(0, -player.speed);
-    if(d === "down") move(0, player.speed);
-    if(d === "left") move(-player.speed, 0);
-    if(d === "right") move(player.speed, 0);
+    interval = setInterval(()=> {
+      if(d === "up") move(0, -player.speed*1.6);
+      if(d === "down") move(0, player.speed*1.6);
+      if(d === "left") move(-player.speed*1.6, 0);
+      if(d === "right") move(player.speed*1.6, 0);
+    }, 60);
   }, {passive:false});
+  btn.addEventListener("touchend", ()=>{ clearInterval(interval); });
+  btn.addEventListener("touchcancel", ()=>{ clearInterval(interval); });
+});
+
+/* tap to move: on small screens or for quick navigation */
+effectsCanvas.addEventListener('click', (e)=>{
+  const rect = effectsCanvas.getBoundingClientRect();
+  const x = (e.clientX - rect.left) * (canvas.width / DPR / rect.width);
+  const y = (e.clientY - rect.top) * (canvas.height / DPR / rect.height);
+  if(Math.hypot(player.x - x, player.y - y) < 40){
+    checkTreasure();
+    checkNPC();
+    return;
+  }
+  const vx = (x - player.x);
+  const vy = (y - player.y);
+  const len = Math.hypot(vx,vy);
+  if(len > 0){
+    const nx = vx/len, ny = vy/len;
+    for(let i=0;i<25;i++){
+      setTimeout(()=> move(nx*player.speed, ny*player.speed), i*12);
+    }
+  }
 });
 
 /* ================= CONFETTI (celebration) ================= */
@@ -598,8 +876,8 @@ function createConfetti(amount = 80){
   const colors = ["#fde047","#f43f5e","#60a5fa","#a78bfa","#34d399","#f59e0b"];
   for(let i=0;i<amount;i++){
     confettiParticles.push({
-      x: rand(0, confettiCanvas.width),
-      y: rand(-confettiCanvas.height*0.5, 0),
+      x: rand(0, confettiCanvas.width/DPR),
+      y: rand(-confettiCanvas.height/DPR*0.5, 0),
       vx: rand(-2.5,2.5),
       vy: rand(1,5),
       r: rand(4,9),
@@ -611,12 +889,12 @@ function createConfetti(amount = 80){
 }
 
 function updateConfetti(){
-  confettiCtx.clearRect(0,0,confettiCanvas.width, confettiCanvas.height);
+  confettiCtx.clearRect(0,0,confettiCanvas.width/DPR, confettiCanvas.height/DPR);
   if(!confettiParticles.length) return;
   confettiParticles.forEach(p=>{
     p.x += p.vx;
     p.y += p.vy;
-    p.vy += 0.06; // gravity
+    p.vy += 0.06;
     p.rot += p.vr;
     confettiCtx.save();
     confettiCtx.translate(p.x, p.y);
@@ -625,77 +903,284 @@ function updateConfetti(){
     confettiCtx.fillRect(-p.r/2, -p.r/2, p.r, p.r*0.6);
     confettiCtx.restore();
   });
-  confettiParticles = confettiParticles.filter(p => p.y < confettiCanvas.height + 50);
+  confettiParticles = confettiParticles.filter(p => p.y < confettiCanvas.height/DPR + 50);
 }
 
-/* ================= DRAW LOOP ================= */
+/* ================= EFFECTS: FIRELIES & SPARKLES ================= */
+function updateFireflies(){
+  effectsCtx.clearRect(0,0,effectsCanvas.width/DPR, effectsCanvas.height/DPR);
+  fireflies.forEach(f=>{
+    f.x += Math.cos(f.phase) * f.v + (Math.random()-0.5)*0.2;
+    f.y += (Math.sin(f.phase)*0.3) - f.vy*0.3;
+    f.phase += 0.02;
+    if(f.x < 0) f.x = effectsCanvas.width/DPR;
+    if(f.x > effectsCanvas.width/DPR) f.x = 0;
+    if(f.y < 0) f.y = effectsCanvas.height/DPR;
+    if(f.y > effectsCanvas.height/DPR) f.y = 0;
+    effectsCtx.save();
+    const g = effectsCtx.createRadialGradient(f.x, f.y, 0, f.x, f.y, 12);
+    g.addColorStop(0, f.color);
+    g.addColorStop(0.4, 'rgba(255,255,255,0.3)');
+    g.addColorStop(1, 'rgba(255,255,255,0)');
+    effectsCtx.fillStyle = g;
+    effectsCtx.fillRect(f.x-12, f.y-12, 24, 24);
+    effectsCtx.restore();
+  });
+}
+
+/* ================= DRAW LOOP (improved map visuals) ================= */
 function draw(){
   tick++;
   // background sea
-  ctx.fillStyle = C.sea;
-  ctx.fillRect(0,0,canvas.width,canvas.height);
+  const grd = ctx.createLinearGradient(0,0,0,700);
+  grd.addColorStop(0, C.sea);
+  grd.addColorStop(1, '#86d0d9');
+  ctx.fillStyle = grd;
+  ctx.fillRect(0,0,1100,700);
 
+  // island tiles
   island.forEach(t=>{
     ctx.fillStyle = C[t.t];
     ctx.fillRect(t.x, t.y, TILE, TILE);
   });
 
+  // softer coastline outline: draw a subtle darker rim where sand meets sea
+  ctx.save();
+  ctx.globalAlpha = 0.12;
+  ctx.strokeStyle = "#6aa7ad";
+  ctx.lineWidth = 8;
+  ctx.beginPath();
+  ctx.ellipse(cx, cy, r-6, r-12, 0, 0, Math.PI*2);
+  ctx.stroke();
+  ctx.restore();
+
+  // small rocks (from seeds) drawn more distinctly
+  rockSeeds.forEach(s=>{
+    ctx.fillStyle = C.rock;
+    ctx.beginPath();
+    ctx.ellipse(s.x, s.y, s.r*0.7, s.r*0.45, 0, 0, Math.PI*2);
+    ctx.fill();
+    ctx.fillStyle = "rgba(0,0,0,0.08)";
+    ctx.fillRect(s.x - s.r*0.2, s.y - s.r*0.05, s.r*0.4, s.r*0.15);
+  });
+
   // paths - draw base then bridge when open; when bridge closed show dashed hint
   paths.forEach(p=>{
-    if(p.bridge && !world.bridgeOpen){
-      // dashed/indented hint for closed bridge
+    if(p.bridge && !state.world.bridgeOpen){
       ctx.fillStyle = "#b8965a";
-      // draw broken beam
       for(let y=p.y; y<p.y+p.h; y+=18){
         ctx.fillRect(p.x, y, p.w, 10);
       }
+      // faint shimmer hint
+      ctx.strokeStyle = "rgba(255,255,255,0.06)";
+      ctx.lineWidth = 1;
+      ctx.strokeRect(p.x-2, p.y-2, p.w+4, p.h+4);
       return;
     }
     ctx.fillStyle = "#b8965a";
     ctx.fillRect(p.x-2,p.y-2,p.w+4,p.h+4);
     ctx.fillStyle = C.path;
-    ctx.fillRect(p.x,p.y,p.w,p.h);
+    roundRect(ctx, p.x, p.y, p.w, p.h, 6, true, false);
+    ctx.fill();
+    // small stones along the path edges for texture
+    ctx.fillStyle = "rgba(0,0,0,0.06)";
+    for(let i=0;i<Math.floor(p.w/12);i++){
+      ctx.fillRect(p.x + i*12 + (i%2?3:0), p.y - 4, 6, 2);
+      ctx.fillRect(p.x + i*12 + (i%2?6:2), p.y + p.h + 2, 6, 2);
+    }
   });
 
-  // houses
+  // houses (improved subtle window glow)
   houses.forEach(h=>{
     ctx.fillStyle = C.roof[h.roof];
-    ctx.fillRect(h.x,h.y,70,20);
+    roundRect(ctx, h.x, h.y, 70, 20, 6, true, false);
+    ctx.fill();
     ctx.fillStyle = C.wall;
-    ctx.fillRect(h.x,h.y+20,70,36);
+    roundRect(ctx, h.x, h.y+20, 70, 36, 6, true, false);
+    ctx.fill();
     ctx.fillStyle = "#6b3e1e";
     ctx.fillRect(h.x+32,h.y+34,8,22);
+    // warm window
+    ctx.fillStyle = "rgba(255,244,190,0.85)";
+    ctx.fillRect(h.x+12, h.y+30, 12, 10);
+    ctx.fillRect(h.x+46, h.y+30, 12, 10);
   });
 
-  // draw treasures (only the current next one shows)
+  // palms
+  palms.forEach(p => drawPalm(p.x, p.y, p.scale));
+
+  // treasures
   drawTreasure();
 
-  // npcs
+  // update & draw NPCs
   updateNPCs();
   npcs.forEach(drawNPC);
 
-  // player
+  // draw player
   drawPlayer();
 
-  // confetti (draw on separate canvas)
-  if(world.celebrate){
+  // effects layer
+  updateFireflies();
+  // confetti
+  if(state.world.celebrate){
     updateConfetti();
   } else {
-    confettiCtx.clearRect(0,0,confettiCanvas.width, confettiCanvas.height);
+    confettiCtx.clearRect(0,0,confettiCanvas.width/DPR, confettiCanvas.height/DPR);
   }
 
   requestAnimationFrame(draw);
 }
 
-/* ================= START ================= */
-/* initial dialogue present until first interaction; populate a helpful Continue to clear it once */
-clearDialogue();
-showDialogue(say("Some people talk.\nSome people explore.\nYou might need to do both.", [
-  { label: "Begin", response: "You set out gently.", onChoose: closeDialogue }
-]));
+/* ================= START / INTERACTIONS ================= */
+function triggerNotification(title, options = {}){ /* limited fallback-notify */
+  try{
+    if("Notification" in window){
+      if(Notification.permission === "granted"){ new Notification(title, options); }
+      else if(Notification.permission === "denied"){ showToast(options.body || title); }
+      else{
+        Notification.requestPermission().then(p => { if(p === "granted") new Notification(title, options); else showToast(options.body || title); });
+      }
+    } else { showToast(options.body || title); }
+  } catch(err){ showToast(options.body || title); }
+}
 
+/* initial dialogue and helpful hint — show only for new players */
+if (state.progress.treasure === 0) {
+  clearDialogue();
+  showDialogue(say("Some people talk.\nSome people explore.\nYou have a lovely way of noticing both.", [
+    { label: "Begin", response: "You step out with a gentle curiosity.", onChoose: closeDialogue },
+    { label: "How to play", response: "Here are a few tips...", onChoose: ()=>{ openHelp(); } }
+  ]));
+} else {
+  // saved game exists: ensure player is not locked and dialogue hidden
+  locked = false;
+  clearDialogue();
+}
+
+/* initial progress UI reflect saved state */
+function updateProgressUI(){
+  for(let i=0;i<progressChips.length;i++){
+    if (i < state.progress.treasure) {
+      progressChips[i].textContent = "★";
+      progressChips[i].style.background = "#fde047";
+    } else {
+      progressChips[i].textContent = "◻";
+      progressChips[i].style.background = "";
+    }
+  }
+}
+updateProgressUI();
+
+/* small helper: if NPC near player, show tiny hint toast (not to spam) */
+let lastHintTick = -999;
+function proximityHints(){
+  for(const n of npcs){
+    if(Math.hypot(player.x - n.x, player.y - n.y) < 70 && tick - lastHintTick > 240){
+      showToast("You can talk to people nearby. They often give kind hints.");
+      lastHintTick = tick;
+      break;
+    }
+  }
+}
+
+/* update loop for input-adjacent behaviors */
+setInterval(()=>{
+  proximityHints();
+}, 1200);
+
+/* main draw kick off */
 draw();
 
+/* ================= CONFETTI API & EFFECTS ================ */
+function triggerSmallSpark(x,y){
+  effectsCtx.save();
+  effectsCtx.fillStyle = "rgba(255,255,255,0.95)";
+  effectsCtx.fillRect(x-2,y-12,4,8);
+  effectsCtx.restore();
+  setTimeout(()=>{ effectsCtx.clearRect(x-6,y-18,12,20); }, 220);
+}
+
+/* ================= HELP OVERLAY & UI ================ */
+function openHelp(){
+  helpOverlay.style.display = 'block';
+  helpOverlay.setAttribute('aria-hidden','false');
+}
+function closeHelpOverlay(){
+  helpOverlay.style.display = 'none';
+  helpOverlay.setAttribute('aria-hidden','true');
+}
+helpBtn.addEventListener('click', openHelp);
+closeHelp.addEventListener('click', closeHelpOverlay);
+
+/* ================= RESET & NOTIFICATIONS ================ */
+resetBtn.addEventListener('click', ()=>{
+  if(confirm("Reset saved progress?")){
+    try{ localStorage.removeItem(STORAGE_KEY); }catch(e){}
+    state.progress.treasure = 0;
+    activeIndex = 0;
+    state.world.bridgeOpen = false;
+    state.world.celebrate = false;
+    updateProgressUI();
+    showToast("Progress reset.");
+    playChime(320,0.12,'sawtooth');
+  }
+});
+
+/* update progress UI when saved's changed via other actions */
+function saveStatePublic(){
+  saveState({ progress: state.progress, world: state.world });
+  updateProgressUI();
+}
+window.saveStatePublic = saveStatePublic;
+
+/* ================= SAVE ON UNLOAD ================= */
+window.addEventListener('beforeunload', ()=> saveState({ progress: state.progress, world: state.world }));
+
+/* ================= POLITE ACCESSIBILITY: announce toasts for screen readers ================ */
+function announceToastForSR(text){
+  const sr = document.createElement('div');
+  sr.setAttribute('aria-live','polite');
+  sr.style.position='absolute';
+  sr.style.left='-9999px';
+  sr.style.top='auto';
+  sr.textContent = text;
+  document.body.appendChild(sr);
+  setTimeout(()=> document.body.removeChild(sr), 1500);
+}
+
+/* ================= HELPER: find NPCs that hint about bridge and nudge them to mention it occasionally ================ */
+setInterval(()=>{
+  // if bridge not open and player has found 1 or 2 treasures, have one NPC hint
+  if(!state.world.bridgeOpen && state.progress.treasure >= 1 && state.progress.treasure < treasures.length){
+    for(const n of npcs){
+      if(n.active && Math.hypot(player.x - n.x, player.y - n.y) < 180){
+        showToast("Someone nearby seems to think watching might help...");
+        break;
+      }
+    }
+  }
+}, 8000);
+
+/* expose some functions for debugging in console (optional) */
+window.__game = { state, player, saveStatePublic, revealBridge, activeIndex };
+
+/* initial small welcome toast */
+setTimeout(()=> showToast("Tip: Talk to people. One of them knows about a bridge. And thank you for being here."), 1600);
+
+/* ================= HELPER: rounded rect ================= */
+function roundRect(ctx, x, y, w, h, r, fill, stroke){
+  if (typeof stroke === 'undefined') stroke = true;
+  if (typeof r === 'undefined') r = 5;
+  ctx.beginPath();
+  ctx.moveTo(x+r, y);
+  ctx.arcTo(x+w, y, x+w, y+h, r);
+  ctx.arcTo(x+w, y+h, x, y+h, r);
+  ctx.arcTo(x, y+h, x, y, r);
+  ctx.arcTo(x, y, x+w, y, r);
+  ctx.closePath();
+  if (fill) ctx.fill();
+  if (stroke) ctx.stroke();
+}
 </script>
 </body>
 </html>
