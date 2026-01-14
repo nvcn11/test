@@ -164,12 +164,36 @@ canvas#game{
 #helpOverlay h3{ margin:0 0 8px 0; font-size:18px; }
 #helpOverlay p{ margin:6px 0; font-size:14px; line-height:1.4; }
 
+/* Creator overlay (modal) */
+#creatorOverlay{
+  position:fixed;
+  left:50%;
+  top:50%;
+  transform:translate(-50%,-50%);
+  max-width:720px;
+  width:92vw;
+  background:linear-gradient(180deg,var(--card), #fff7e8);
+  border:3px solid var(--accent);
+  padding:16px;
+  border-radius:12px;
+  box-shadow:0 24px 80px rgba(0,0,0,0.45);
+  display:none;
+  z-index:1300;
+}
+#creatorOverlay h3{ margin:0 0 8px 0; font-size:18px; }
+#creatorOverlay p{ margin:6px 0; font-size:14px; line-height:1.45; }
+
 /* Progress chips */
 .progress-chips{ display:flex; gap:6px; align-items:center; }
 .progress-chip{
   width:24px; height:24px; border-radius:6px; display:inline-block;
   background:#f3f4f6; border:1px solid rgba(0,0,0,0.06);
   display:flex; align-items:center; justify-content:center; font-size:12px;
+}
+
+/* Creator's note (appended at end of document) - hidden by default */
+.creator-note{
+  display:none;
 }
 
 /* Responsive: show dpad on narrower screens */
@@ -220,14 +244,25 @@ canvas#game{
 <div id="toast" role="status" aria-live="polite"></div>
 
 <!-- Help Overlay -->
-<div id="helpOverlay" role="dialog" aria-modal="true" aria-hidden="true">
-  <h3>How to play</h3>
+<div id="helpOverlay" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="helpTitle">
+  <h3 id="helpTitle">How to play</h3>
   <p>Move with <strong>Arrow keys</strong> or <strong>WASD</strong>. On mobile, use the D-pad or tap the screen edge where the d-pad appears.</p>
   <p>Walk close to people to talk — they sometimes leave helpful clues. Treasures are small yellow lights resting on the ground; collect them by talking and choosing to "take a moment".</p>
   <p>One treasure is left behind somewhere... listen to people and find where the bridge might appear.</p>
   <p>Hints appear as toasts and in dialogue when you get close to things. Progress is saved automatically.</p>
   <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:8px;">
     <button class="btn primary" id="closeHelp">Got it</button>
+  </div>
+</div>
+
+<!-- Creator overlay (appears only after finishing last message) -->
+<div id="creatorOverlay" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="creatorTitle">
+  <h3 id="creatorTitle">Creator’s note</h3>
+  <p>Hi, HAHAHAHA this really did not turn out how I envisioned it to be since I got sick and it ruined my plans for how I wanted this to look but I hope it was playable enough huhuhu</p>
+  <p>I really meant what each NPC had to say about you and I wish you all the best for your birthday, sana this wasn't too corny and yeah HAPPY HAPPY BIRTHDAY TALAAAA!!!</p>
+  <p style="font-size:13px; opacity:0.9; margin-top:6px">— xoxo Creator</p>
+  <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:10px;">
+    <button class="btn primary" id="closeCreatorBtn">Close</button>
   </div>
 </div>
 
@@ -253,6 +288,8 @@ const closeHelp = document.getElementById("closeHelp");
 const soundBtn = document.getElementById("soundBtn");
 const resetBtn = document.getElementById("resetBtn");
 const progressChips = [document.getElementById("p0"), document.getElementById("p1"), document.getElementById("p2"), document.getElementById("p3")];
+const creatorOverlay = document.getElementById("creatorOverlay");
+const closeCreatorBtn = document.getElementById("closeCreatorBtn");
 
 let DPR = Math.max(1, window.devicePixelRatio || 1);
 function resizeCanvases(){
@@ -313,6 +350,9 @@ const state = {
    We'll set it after treasures is defined.
 */
 let activeIndex = 0;
+
+/* Pending flag: used to show creator's overlay after player finishes final dialogue */
+let pendingCreatorNote = false;
 
 /* ================= COLORS / THEME ================= */
 const C = {
@@ -478,6 +518,12 @@ function closeDialogue(){
   clearDialogue();
   // save after interactions
   saveState({ progress: state.progress, world: state.world });
+
+  // If the game just finished and we set the pendingCreatorNote flag, open the creator overlay now.
+  if(pendingCreatorNote && state.world.celebrate === true && state.progress.treasure >= treasures.length){
+    pendingCreatorNote = false;
+    openCreatorOverlay();
+  }
 }
 
 /* ================= TOASTS ================= */
@@ -485,6 +531,7 @@ function showToast(text, duration = 3800){
   toastEl.textContent = text;
   toastEl.style.display = "block";
   toastEl.style.opacity = "1";
+  announceToastForSR(text);
   clearTimeout(toastEl._hideTimer);
   toastEl._hideTimer = setTimeout(()=>{
     toastEl.style.transition = "opacity 300ms";
@@ -500,10 +547,22 @@ soundBtn.addEventListener('click', () => {
   soundBtn.setAttribute('aria-pressed', String(audioEnabled));
   soundBtn.textContent = audioEnabled ? '🔔' : '🔕';
 });
+
+/* Reusable single AudioContext to avoid repeated creation */
+let _audioCtx = null;
+function ensureAudioCtx(){
+  if(!_audioCtx){
+    try{ _audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
+    catch(e){ _audioCtx = null; }
+  }
+  return _audioCtx;
+}
+
 function playChime(freq = 880, length=0.18, type='sine'){
   if(!audioEnabled) return;
+  const ctxA = ensureAudioCtx();
+  if(!ctxA) return;
   try{
-    const ctxA = new (window.AudioContext || window.webkitAudioContext)();
     const o = ctxA.createOscillator();
     const g = ctxA.createGain();
     o.type = type;
@@ -516,7 +575,7 @@ function playChime(freq = 880, length=0.18, type='sine'){
     o.start(now);
     g.gain.exponentialRampToValueAtTime(0.0001, now + length);
     o.stop(now + length + 0.05);
-    setTimeout(()=>{ try{ ctxA.close(); }catch(e){} }, 600);
+    // do not close the AudioContext; reuse it for subsequent sounds
   }catch(e){}
 }
 
@@ -527,6 +586,28 @@ const treasures=[
   {x:340,y:560,msg:"Things feel calmer when you come.\nYou leave warmth in your wake."},
   {x:760,y:560,msg:"You found the last tiny light.\nThis island kept a secret for you.", requiresBridge:true}
 ];
+
+/* Helper: open/close creator overlay (modal) */
+function openCreatorOverlay(){
+  if(!creatorOverlay) return;
+  creatorOverlay.style.display = 'block';
+  creatorOverlay.setAttribute('aria-hidden','false');
+  // focus the close button for keyboard users
+  if(closeCreatorBtn) closeCreatorBtn.focus();
+  // trap basic Escape to close
+  document.addEventListener('keydown', creatorEscHandler);
+}
+function closeCreatorOverlay(){
+  if(!creatorOverlay) return;
+  creatorOverlay.style.display = 'none';
+  creatorOverlay.setAttribute('aria-hidden','true');
+  // restore focus to the main canvas for continuity
+  try{ canvas.focus(); }catch(e){}
+  document.removeEventListener('keydown', creatorEscHandler);
+}
+function creatorEscHandler(e){
+  if(e.key === 'Escape') closeCreatorOverlay();
+}
 
 /* ======= SAFE RESTORE (moved after treasures exist) ======= */
 (function restoreProgress(){
@@ -540,6 +621,9 @@ const treasures=[
   state.world.bridgeOpen = !!saved?.world?.bridgeOpen;
   state.world.celebrate = !!saved?.world?.celebrate;
   updateProgressUI();
+
+  // Do NOT automatically show the creator overlay on load.
+  // The creator overlay should appear only immediately after the player finishes the final dialogue.
 
   // Defensive: ensure no stale lock on load
   locked = false;
@@ -623,8 +707,14 @@ function collectCurrent(){
       showToast("A faint glow appears somewhere on the island.", 1600);
     }
   } else {
+    // mark celebration explicitly and persist
     state.world.celebrate = true;
+    saveState({ progress: state.progress, world: state.world });
+
     createConfetti(220);
+    // set a flag so the creator overlay opens only after the player finishes the final dialogue
+    pendingCreatorNote = true;
+
     showDialogue(say(
       "You gathered every small light.\nHappy Birthday Tala! This island is for you, may it hold a quiet warmth for you always.\nYou are seen. You are treasured. \nYou are so deeply loved.",
       [
@@ -1104,13 +1194,23 @@ function triggerSmallSpark(x,y){
 function openHelp(){
   helpOverlay.style.display = 'block';
   helpOverlay.setAttribute('aria-hidden','false');
+  // move focus into help overlay for accessibility
+  const closeBtn = document.getElementById('closeHelp');
+  if(closeBtn) closeBtn.focus();
 }
 function closeHelpOverlay(){
   helpOverlay.style.display = 'none';
   helpOverlay.setAttribute('aria-hidden','true');
+  // restore focus to help button
+  helpBtn.focus();
 }
 helpBtn.addEventListener('click', openHelp);
 closeHelp.addEventListener('click', closeHelpOverlay);
+
+/* ================= CREATOR OVERLAY UI ================ */
+if(closeCreatorBtn){
+  closeCreatorBtn.addEventListener('click', closeCreatorOverlay);
+}
 
 /* ================= RESET & NOTIFICATIONS ================ */
 resetBtn.addEventListener('click', ()=>{
@@ -1123,6 +1223,8 @@ resetBtn.addEventListener('click', ()=>{
     updateProgressUI();
     showToast("Progress reset.");
     playChime(320,0.12,'sawtooth');
+    // hide creator overlay if shown
+    closeCreatorOverlay();
   }
 });
 
@@ -1182,10 +1284,6 @@ function roundRect(ctx, x, y, w, h, r, fill, stroke){
   if (stroke) ctx.stroke();
 }
 </script>
+
 </body>
 </html>
-
-
-
-
-
